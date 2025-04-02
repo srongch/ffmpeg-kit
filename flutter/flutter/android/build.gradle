@@ -2,9 +2,6 @@ buildscript {
     repositories {
         google()
         mavenCentral()
-        flatDir {
-            dirs 'libs'
-        }
     }
 
     dependencies {
@@ -16,20 +13,10 @@ rootProject.allprojects {
     repositories {
         google()
         mavenCentral()
-        flatDir {
-            dirs 'libs'
-        }
     }
 }
 
 apply plugin: 'com.android.library'
-
-// Add this at the top level to make your libs directory accessible
-repositories {
-    flatDir {
-        dirs project.file('libs')
-    }
-}
 
 android {
     // Conditional for compatibility with AGP <4.2.
@@ -62,7 +49,5 @@ android {
 
 dependencies {
     implementation 'androidx.annotation:annotation:1.5.0'
-    // Use project-specific path to reference the AAR file
-    implementation(name: 'ffmpeg-kit', ext: 'aar')
-    implementation 'com.arthenica:smart-exception-java:0.2.1'
+    implementation 'com.arthenica:ffmpeg-kit-https:6.0-2'
 }
