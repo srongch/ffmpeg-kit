@@ -2,6 +2,9 @@ buildscript {
     repositories {
         google()
         mavenCentral()
+        flatDir {
+            dirs 'libs'
+        }
     }
 
     dependencies {
@@ -13,10 +16,89 @@ rootProject.allprojects {
     repositories {
         google()
         mavenCentral()
+        flatDir {
+            dirs findPackageLocation()
+        }
     }
 }
 
+def findPackageLocation() {
+    def location = "${rootProject.projectDir.parentFile}/pubspec.lock"
+    println "🔍 Searching for pubspec.lock file in ${location}"
+    def pubspecLock = file(location)
+    def pluginLibsDir = null
+    def pluginName = "ffmpeg_kit_flutter"
+    if (pubspecLock.exists()) {
+        def lines = pubspecLock.readLines()
+        println "🔍 Searching for ${pluginName} AAR directory in pubspec.lock file...${location}"
+
+        def startIndex = lines.findIndexOf { it.trim().startsWith("${pluginName}:") }
+
+        if (startIndex != -1) {
+            def blockLines = []
+            for (int i = startIndex + 1; i < lines.size(); i++) {
+                def line = lines[i]
+                def trimmed = line.trim()
+                if (trimmed.startsWith("version:")) {
+                    blockLines.add(trimmed)
+                    break // ✅ Stop right after version line
+                }
+                blockLines.add(trimmed)
+            }
+            println "blockLines: ${blockLines}"
+            def isGit = blockLines.any { it.startsWith("source: git") }
+            if (isGit) {
+                def refLine = blockLines.find { it.startsWith("resolved-ref:") }
+                def resolvedRef = refLine?.split(":")?.getAt(1)?.trim()?.replaceAll("\"", "")
+                if (resolvedRef) {
+                    def gitFolder = "${System.getProperty("user.home")}/.pub-cache/git/${pluginName}-${resolvedRef}"
+                    println "gitFolder: ${gitFolder}"
+                    return "${gitFolder}/android/libs"
+                }
+            }
+
+            def isPath = blockLines.any { it.startsWith("source: path") }
+            if (isPath) {
+                println "🔍 Searching for path in pubspec.lock file...${location}"
+                def pathLine = blockLines.find { it.startsWith("path:") }
+                def relativePath = pathLine?.split(":", 2)?.getAt(1)?.trim()?.replaceAll("\"", "")
+                println "relativePath: ${relativePath}"
+                if (relativePath) {
+                    def fullPath = "${rootProject.projectDir.parentFile.parentFile}/${relativePath}"
+                    println "fullPath: ${fullPath}"
+                    def normalizedPath = removeDotDot(fullPath)
+                    println "normalizedPath: ${normalizedPath}"
+                    pluginLibsDir = "${normalizedPath}/android/libs"
+                }
+
+        }
+        }
+    }else{
+        println "⚠️ pubspec.lock file not found. Please run 'flutter pub get' to generate it."
+    }
+
+    if (pluginLibsDir != null) {
+        println "✅ Found ${pluginName} AAR directory via resolved-ref: ${pluginLibsDir}"
+        return pluginLibsDir
+    } else {
+        println "⚠️ Could not locate ${pluginName} git package via resolved-ref"
+    }
+
+    return 'libs'
+}
+
+static def removeDotDot(path) {
+    return path.replace("../", "")
+}
+
 apply plugin: 'com.android.library'
+
+// Add this at the top level to make your libs directory accessible
+repositories {
+    flatDir {
+        dirs project.file('libs')
+    }
+}
 
 android {
     // Conditional for compatibility with AGP <4.2.
@@ -49,5 +131,7 @@ android {
 
 dependencies {
     implementation 'androidx.annotation:annotation:1.5.0'
-    implementation 'com.arthenica:ffmpeg-kit-https:6.0-2'
+    // Use project-specific path to reference the AAR file
+    implementation(name: 'ffmpeg-kit', ext: 'aar')
+    implementation 'com.arthenica:smart-exception-java:0.2.1'
 }
