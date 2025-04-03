@@ -57,7 +57,7 @@ def findPackageLocation() {
                     def pathName = pathLine?.split(":")?.getAt(1)?.trim()?.replaceAll("\"", "")
                     def gitFolder = "${System.getProperty("user.home")}/.pub-cache/git/${folderName}-${resolvedRef}"
 
-                    def normalizedPath = "${gitFolder}${pathName}/android/libs"
+                    def normalizedPath = "${gitFolder}/${pathName}/android/libs"
                     println "gitFolder: ${normalizedPath}"
                     return normalizedPath
                 }
