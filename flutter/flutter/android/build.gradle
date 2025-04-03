@@ -49,11 +49,17 @@ def findPackageLocation() {
             def isGit = blockLines.any { it.startsWith("source: git") }
             if (isGit) {
                 def refLine = blockLines.find { it.startsWith("resolved-ref:") }
+                def urlLine = blockLines.find { it.startsWith("url:") }
+                def pathLine = blockLines.find { it.startsWith("path:") }
                 def resolvedRef = refLine?.split(":")?.getAt(1)?.trim()?.replaceAll("\"", "")
                 if (resolvedRef) {
-                    def gitFolder = "${System.getProperty("user.home")}/.pub-cache/git/${pluginName}-${resolvedRef}"
-                    println "gitFolder: ${gitFolder}"
-                    return "${gitFolder}/android/libs"
+                    def folderName = extractRepoName(urlLine?.split("url:")?.getAt(1)?.trim()?.replaceAll("\"", ""))
+                    def pathName = pathLine?.split(":")?.getAt(1)?.trim()?.replaceAll("\"", "")
+                    def gitFolder = "${System.getProperty("user.home")}/.pub-cache/git/${folderName}-${resolvedRef}"
+
+                    def normalizedPath = "${gitFolder}${pathName}/android/libs"
+                    println "gitFolder: ${normalizedPath}"
+                    return normalizedPath
                 }
             }
 
@@ -89,6 +95,13 @@ def findPackageLocation() {
 
 static def removeDotDot(path) {
     return path.replace("../", "")
+}
+
+def extractRepoName(gitUrl) {
+    println "🔍 Extracting repo name from URL: ${gitUrl}"
+    def cleaned = gitUrl.trim()
+    def name = cleaned.tokenize('/').last()  // gets 'packages.git'
+    return name.endsWith(".git") ? name[0..-5] : name  // remove .git
 }
 
 apply plugin: 'com.android.library'
